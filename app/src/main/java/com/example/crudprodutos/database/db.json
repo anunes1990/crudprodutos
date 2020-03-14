@@ -1,0 +1,19 @@
+{
+  "produtos": [
+    {
+      "id": 1,
+      "nome": "JSON SERVER EDIT",
+      "preco": 250.3
+    },
+    {
+      "id": 227044239,
+      "nome": "Produto Aula",
+      "preco": 123.3
+    },
+    {
+      "id": 3487847,
+      "nome": "Produto Aula 2",
+      "preco": 1832
+    }
+  ]
+}
