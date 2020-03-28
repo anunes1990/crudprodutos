@@ -12,15 +12,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.crudprodutos.adapter.ProdutoAdapter
 import com.example.crudprodutos.model.Produto
-import com.example.crudprodutos.services.ProdutoService
-import com.example.crudprodutos.services.RetrofitInitializer
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ProdutosActivity : AppCompatActivity() {
-    val service: ProdutoService = RetrofitInitializer().getRetrofitCofig()
+    val db = FirebaseFirestore.getInstance();
     private var listaProdutos: ArrayList<Produto> = ArrayList()
 
     private lateinit var recyclerView: RecyclerView
@@ -34,29 +29,30 @@ class ProdutosActivity : AppCompatActivity() {
     }
 
     fun getProdutos() {
-        viewManager = LinearLayoutManager(this)
-        viewAdapter = ProdutoAdapter(listaProdutos)
-        recyclerView = findViewById<RecyclerView>(R.id.recyclerViewProdutos).apply {
-            setHasFixedSize(true)
-            layoutManager = viewManager
-            adapter = viewAdapter
-        }
-
-        service.getAllProdutos().enqueue(object : Callback<List<Produto>> {
-            override fun onFailure(call: Call<List<Produto>>, t: Throwable) {
-                Log.e("Erro", t.message)
-            }
-
-            override fun onResponse(call: Call<List<Produto>>, response: Response<List<Produto>>) {
-                if (response.isSuccessful) {
-                    val produtos: List<Produto>? = response.body()
-                    produtos?.map { p -> listaProdutos.add(p) }
-                    viewAdapter.notifyDataSetChanged()
-                } else {
-                    Log.e("Erro", response.code().toString())
+        db.collection("produtos")
+            .get()
+            .addOnSuccessListener { result ->
+                for (document in result) {
+                    Log.d("FIREBASE >>>>> ", "${document.id} => ${document.data}")
+                    listaProdutos.add(
+                        Produto(
+                            id = document.id,
+                            nome = document.data["nome"].toString(),
+                            preco = document.data["preco"].toString().toDouble()
+                        )
+                    )
+                }
+                viewManager = LinearLayoutManager(this)
+                viewAdapter = ProdutoAdapter(listaProdutos)
+                recyclerView = findViewById<RecyclerView>(R.id.recyclerViewProdutos).apply {
+                    setHasFixedSize(true)
+                    layoutManager = viewManager
+                    adapter = viewAdapter
                 }
             }
-        })
+            .addOnFailureListener { exception ->
+                Log.w("FIREBASE >>>>> ", "Error getting documents.", exception)
+            }
     }
 
     fun addProduto(view: View?) {

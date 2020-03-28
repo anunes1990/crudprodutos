@@ -6,81 +6,67 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.EditText
-import com.example.crudprodutos.model.Produto
 import com.example.crudprodutos.services.ProdutoService
 import com.example.crudprodutos.services.RetrofitInitializer
-import okhttp3.ResponseBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.google.firebase.firestore.FirebaseFirestore
 
 class EditProdutoActivity : AppCompatActivity() {
-    val service: ProdutoService = RetrofitInitializer().getRetrofitCofig()
+    val db = FirebaseFirestore.getInstance();
     private var idProduto: String? = ""
-    private var produto: Produto? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_produto)
         idProduto = intent.getStringExtra("idProduto")
         val id = idProduto.toString()
-        service.getProduto(id).enqueue(object : Callback<Produto?> {
-            override fun onFailure(call: Call<Produto?>, t: Throwable) {
-                Log.e("Erro", t.message)
-            }
 
-            override fun onResponse(call: Call<Produto?>, response: Response<Produto?>) {
-                if (response.isSuccessful) {
-                    produto = response.body()
-                    val nome = findViewById<EditText>(R.id.inputNome)
-                    nome.setText(produto?.nome)
-                    val valor = findViewById<EditText>(R.id.inputValor)
-                    valor.setText(produto?.preco?.toString())
-                } else {
-                    Log.e("Erro", response.code().toString())
-                }
+        db.collection("produtos")
+            .document(id)
+            .get()
+            .addOnSuccessListener { result ->
+                Log.d("FIREBASE >>>>> ", "${result.id} => ${result.data}")
+                val nome = findViewById<EditText>(R.id.inputNome)
+                nome.setText(result["nome"].toString())
+                val valor = findViewById<EditText>(R.id.inputValor)
+                valor.setText(result["preco"].toString())
             }
-        })
+            .addOnFailureListener { exception ->
+                Log.w("FIREBASE >>>>> ", "Error getting documents.", exception)
+            }
     }
 
     fun salvar(view: View?) {
         val txtNome = findViewById<EditText>(R.id.inputNome).text.toString()
-        produto?.nome = txtNome
         val txtValor = findViewById<EditText>(R.id.inputValor).text.toString()
-        produto?.preco = txtValor.toDouble()
-        service.putProduto(idProduto.toString(), produto as Produto)
-            .enqueue(object : Callback<ResponseBody> {
-                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    Log.e("Erro", t.message)
-                }
 
-                override fun onResponse(
-                    call: Call<ResponseBody>,
-                    response: Response<ResponseBody>
-                ) {
-                    if (response.isSuccessful) {
-                    } else {
-                        Log.e("Erro", response.code().toString())
-                    }
-                }
-            })
+        val produto = hashMapOf(
+            "nome" to txtNome,
+            "preco" to txtValor.toDouble()
+        )
+
+        db.collection("produtos")
+            .document(idProduto.toString())
+            .update(produto)
+            .addOnSuccessListener { documentReference ->
+                Log.d("Produto Editado", "DocumentSnapshot added with ID: ${documentReference}")
+            }
+            .addOnFailureListener { e ->
+                Log.w("Ediçã Error", "Error adding document", e)
+            }
         setResult(Activity.RESULT_OK)
         finish()
     }
 
     fun excluir(view: View?) {
-        service.deleteProduto(idProduto.toString()).enqueue(object : Callback<ResponseBody> {
-            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                Log.e("Erro", t.message)
+        db.collection("produtos")
+            .document(idProduto.toString())
+            .delete()
+            .addOnSuccessListener { documentReference ->
+                Log.d("Produto Excluido", "DocumentSnapshot added with ID: ${documentReference}")
             }
-
-            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
-                if (response.isSuccessful) {
-                } else {
-                    Log.e("Erro", response.code().toString())
-                }
+            .addOnFailureListener { e ->
+                Log.w("Exclusão Error", "Error adding document", e)
             }
-        })
         setResult(666)
         finish()
     }
